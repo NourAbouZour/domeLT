@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DOME Ltd — Price List Search</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --surface2: #ffffff;
+    --border: #e0e0e6;
+    --text: #1a1a2e;
+    --text-dim: #6b6b80;
+    --accent: #b8922e;
+    --accent-glow: rgba(184,146,46,0.10);
+    --accent-dark: #96760f;
+    --brand-tag: #ede7f6;
+    --brand-text: #5e35b1;
+    --radius: 14px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(28px, 5vw, 42px);
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .header p {
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+  .header .divider {
+    width: 60px;
+    height: 2px;
+    background: var(--accent);
+    margin: 18px auto 0;
+    border-radius: 1px;
+  }
+
+  /* Search area */
+  .search-wrapper {
+    position: relative;
+    margin-bottom: 28px;
+  }
+  .search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.25s, box-shadow 0.25s;
+  }
+  .search-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-glow), 0 8px 32px rgba(0,0,0,0.06);
+  }
+  .search-icon {
+    padding: 0 4px 0 18px;
+    display: flex;
+    align-items: center;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .search-box input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    padding: 16px 12px;
+    min-width: 0;
+  }
+  .search-box input::placeholder { color: var(--text-dim); }
+  .clear-btn {
+    background: none; border: none; color: var(--text-dim);
+    cursor: pointer; padding: 0 16px; display: none;
+    font-size: 20px; line-height: 1;
+    transition: color 0.2s;
+  }
+  .clear-btn:hover { color: var(--text); }
+  .clear-btn.visible { display: block; }
+
+  /* Filter pills */
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .pill {
+    padding: 7px 16px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .pill:hover { border-color: var(--accent); color: var(--text); }
+  .pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  /* Dropdown suggestions */
+  .suggestions {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0; right: 0;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    max-height: 340px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.10);
+  }
+  .suggestions.open { display: block; }
+  .suggestion-item {
+    padding: 12px 18px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover, .suggestion-item.active {
+    background: var(--accent-glow);
+  }
+  .sug-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .sug-code {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .sug-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sug-brand {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--brand-text);
+    background: var(--brand-tag);
+    padding: 3px 10px;
+    border-radius: 100px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  mark {
+    background: rgba(184,146,46,0.15);
+    color: #7a5f00;
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  /* Results count */
+  .results-info {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    padding-left: 4px;
+  }
+
+  /* Result card */
+  .result-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 14px;
+    transition: border-color 0.25s, transform 0.2s, box-shadow 0.2s;
+    animation: fadeUp 0.35s ease both;
+  }
+  .result-card:hover {
+    border-color: var(--accent-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .card-brand {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--brand-text);
+    background: var(--brand-tag);
+    padding: 4px 12px;
+    border-radius: 100px;
+    letter-spacing: 1px;
+  }
+  .card-price {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .card-desc {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    line-height: 1.4;
+  }
+  .card-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--bg);
+    padding: 10px 14px;
+    border-radius: 10px;
+  }
+  .meta-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+  }
+  .meta-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-all;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+  .empty-state svg { margin-bottom: 16px; opacity: 0.4; }
+  .empty-state p { font-size: 15px; }
+  .empty-state .hint { font-size: 13px; margin-top: 6px; }
+
+  /* Brand filter bar */
+  .brand-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    margin-bottom: 24px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .brand-scroll::-webkit-scrollbar { height: 4px; }
+  .brand-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .container { padding: 24px 14px 40px; }
+    .result-card { padding: 18px; }
+    .card-price { font-size: 22px; }
+    .card-meta { grid-template-columns: 1fr; }
+    .suggestion-item { padding: 10px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>DOME Ltd</h1>
+    <p>Price List USD HT — 08.09.2025</p>
+    <div class="divider"></div>
+  </div>
+
+  <div class="brand-scroll" id="brandScroll"></div>
+
+  <div class="search-wrapper">
+    <div class="search-box">
+      <div class="search-icon">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="7"/><line x1="15" y1="15" x2="19" y2="19"/></svg>
+      </div>
+      <input type="text" id="searchInput" placeholder="Search by item code, barcode, or description..." autocomplete="off">
+      <button class="clear-btn" id="clearBtn">&times;</button>
+    </div>
+    <div class="suggestions" id="suggestions"></div>
+  </div>
+
+  <div class="results-info" id="resultsInfo"></div>
+  <div id="results"></div>
+</div>
+
+<script>
+const DATA = [{"brand":"ELIE SAAB","itemCode":"ES 41121","barcode":"7640233340028","description":"LE PARFUM  EDP 50ML SPRAY","price":124},{"brand":"ELIE SAAB","itemCode":"ES 41125","barcode":"7640233340035","description":"LE PARFUM  EDP 90ML SPRAY","price":169},{"brand":"ELIE SAAB","itemCode":"ES 41221","barcode":"7640233340059","description":"LE PARFUM EDP 50ML  ESSENTIEL  D","price":124},{"brand":"ELIE SAAB","itemCode":"ES 41225","barcode":"7640233340066","description":"LE PARFUM EDP 90ML  ESSENTIEL D","price":169},{"brand":"ELIE SAAB","itemCode":"ES 41321","barcode":"7640233340080","description":"ES LP ROYAL EDP 50ML D","price":124},{"brand":"ELIE SAAB","itemCode":"ES 41325","barcode":"7640233340097","description":"ES LP ROYAL EDP 90ML D","price":169},{"brand":"ELIE SAAB","itemCode":"ES 41421","barcode":"7640233340110","description":"LE PARFUM WHITE EDP 50ML","price":124},{"brand":"ELIE SAAB","itemCode":"ES 41425","barcode":"7640233340127","description":"LE PARFUM WHITE EDP 90ML","price":169},{"brand":"ELIE SAAB","itemCode":"ES 41521","barcode":"7640233340714","description":"LP LUMIERE 50ML EDP","price":124},{"brand":"ELIE SAAB","itemCode":"ES 41525","barcode":"7640233342930","description":"LP LUMIERE 90ML EDP","price":169},{"brand":"ELIE SAAB","itemCode":"ES 41621","barcode":"7640233341704","description":"ES LE PARFUM BRIDAL EDP 50ML","price":124},{"brand":"ELIE SAAB","itemCode":"ES 41625","barcode":"7640233341711","description":"ES LE PARFUM BRIDAL EDP 90ML","price":169},{"brand":"ELIE SAAB","itemCode":"ES 42021","barcode":"7640233340189","description":"GON EDP 50ML","price":113},{"brand":"ELIE SAAB","itemCode":"ES 42025","barcode":"7640233340196","description":"GON EDP 90ML","price":158},{"brand":"ELIE SAAB","itemCode":"ES 42121","barcode":"7640233340219","description":"ES GON FOREVER EDP 50ML D","price":113},{"brand":"ELIE SAAB","itemCode":"ES 42125","barcode":"7640233340226","description":"ES GON FOREVER EDP 90ML D","price":158},{"brand":"ELIE SAAB","itemCode":"ES 42221","barcode":"7640233340240","description":"GON SHINE EDP 50ML D","price":113},{"brand":"ELIE SAAB","itemCode":"ES 42225","barcode":"7640233340257","description":"GON SHINE EDP 90ML D","price":158},{"brand":"ELIE SAAB","itemCode":"ES 42321","barcode":"7640233341063","description":"GON LOVELY 50ML EDP","price":113},{"brand":"ELIE SAAB","itemCode":"ES 42325","barcode":"7640233341070","description":"GON LOVELY 90ML EDP","price":158},{"brand":"ELIE SAAB","itemCode":"ES 42421","barcode":"7640233342459","description":"GON Rose Petal EDP 50ML","price":113},{"brand":"ELIE SAAB","itemCode":"ES 42425","barcode":"7640233342466","description":"GON Rose Petal EDP 90ML","price":158},{"brand":"ELIE SAAB","itemCode":"ES 43126","barcode":"7640233340806","description":"ES LA COLLECTION - ESSENCE N1 ROSE 100ML EDP","price":198},{"brand":"ELIE SAAB","itemCode":"ES 43526","barcode":"7640233340844","description":"ES LA COLLECTION - ESSENCE N6 VETIVER 100ML EDP","price":198},{"brand":"ELIE SAAB","itemCode":"ES 45021","barcode":"7640233341407","description":"ES ELIXIR 50ML EDP","price":124},{"brand":"ELIE SAAB","itemCode":"ES 4502424","barcode":"7640233342190","description":"COF ELIXIR EDP 100ML + BL 75ML + SG 75ML XMAS 24","price":182},{"brand":"ELIE SAAB","itemCode":"ES 45025","barcode":"7640233341414","description":"ES ELIXIR 100ML EDP","price":169},{"brand":"ELIE SAAB","itemCode":"ES 45032","barcode":"7640233341995","description":"COF ELIXIR EDP 100ML+BL75ML+SG75ML PLAST.F.XMAS 23","price":161},{"brand":"ELIE SAAB","itemCode":"ES 45121","barcode":"7640233342046","description":"ES ELIXIR LOVE 50ML EDP","price":124},{"brand":"ELIE SAAB","itemCode":"ES 45126","barcode":"7640233342053","description":"ES ELIXIR LOVE 100ML EDP","price":169},{"brand":"ELIE SAAB","itemCode":"ES 46021","barcode":"7640233342558","description":"ES L HOMME 50ML EDP","price":97},{"brand":"ELIE SAAB","itemCode":"ES 46026","barcode":"7640233342565","description":"ES L HOMME 100ML EDP","price":143},{"brand":"ELIE SAAB","itemCode":"ES 46028","barcode":"7640233342398","description":"ES L HOMME REFILL 150ML EDP","price":120},{"brand":"ELIE SAAB","itemCode":"ES 46057","barcode":"7640233342619","description":"ES L HOMME DEO STICK 75G","price":46},{"brand":"ELIE SAAB","itemCode":"ES 47021","barcode":"7640233340479","description":"ES LP ABSOLU 50ML EDP","price":124},{"brand":"ELIE SAAB","itemCode":"ES 47025","barcode":"7640233342756","description":"ES LP ABSOLU 90ML EDP","price":169},{"brand":"ELIE SAAB","itemCode":"ES4112524","barcode":"7640233342718","description":"COF LP EDP 90ML + BL 75ML + SG 75ML XMAS 2025","price":169},{"brand":"ELIE SAAB","itemCode":"ES4112525","barcode":"7640233342701","description":"COF LP EDP 50ML + BL 75ML XMAS 2025","price":124},{"brand":"ELIE SAAB","itemCode":"ES4202525","barcode":"7640233342794","description":"COF GON 50ML EDP+ BL75ML  XMAS 25","price":113},{"brand":"ELIE SAAB","itemCode":"ES4512526","barcode":"7640233342817","description":"COF ELIXIR LOVE 100ML EDP+ BL75ML +SC 75ML XMAS 25","price":169},{"brand":"ELIE SAAB","itemCode":"ES4602526","barcode":"7640233342749","description":"COF L HOMME EDP 50ML + SG 75ML  XMAS 2025","price":97},{"brand":"ELIE SAAB","itemCode":"ES4602529","barcode":"7640233342732","description":"COF L HOMME EDP 100ML + 10ML +  SG 75ML  XMAS 2025","price":143},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 114702","barcode":"8431754008769","description":"COF HWN BLUE DROP EDT100ml+EDT30ml+ 4.5ML  XMAS24","price":72},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 134101","barcode":"8431754341019","description":"HWN EDT 50ml Vapo","price":48},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 134201","barcode":"8431754342016","description":"HWN EDT 100ml Vapo","price":66},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 139030","barcode":"8431754005713","description":"HWN Magic EDT 50ml Vapo","price":51},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 139040","barcode":"8431754005706","description":"HWN Magic EDT 100ml Vapo","price":75},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 143030","barcode":"8431754006048","description":"HWN Man X EDT 75ml Vapo","price":59},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 143040","barcode":"8431754006031","description":"HWN Man X EDT 125ml Vapo","price":83},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 146151","barcode":"8431754461519","description":"HWN MAN EDT 75ml Vapo","price":59},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 146251","barcode":"8431754462516","description":"HWN MAN EDT 125ml Vapo","price":83},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 147030","barcode":"8431754007267","description":"HWN Man Hero EDT 75ml Vapo","price":57},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 147040","barcode":"8431754007250","description":"HWN Man Hero EDT 125ml Vapo","price":83},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 147101","barcode":"8431754471013","description":"HWN Blue Drop EDT 50ml Vapo","price":51},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 147201","barcode":"8431754472010","description":"HWN Blue Drop EDT 100ml Vapo","price":75},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 149030","barcode":"8431754007946","description":"HWN Blossom EDT 50ml Vapo D","price":48},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 149040","barcode":"8431754007939","description":"HWN Blossom EDT 100ml Vapo","price":66},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 152030","barcode":"8431754008585","description":"HWN Man Mystery EDP 75ml Vapo","price":65},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 152040","barcode":"8431754008578","description":"HWN Man Mystery EDP 125ml Vapo","price":89},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 152140","barcode":"8431754008844","description":"COF HWN Man Mystery EDP 125ml + EDP 50ml XMAS 2024","price":86},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 154030","barcode":"8431754008929","description":"HWN My Wish EDP 50ml Vapo","price":65},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 154040","barcode":"8431754008912","description":"HWN My Wish EDP 100ml Vapo","price":91},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 155030","barcode":"8431754009476","description":"HWN Bliss EDT 50ml Vapo","price":46},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 155040","barcode":"8431754009469","description":"HWN Bliss EDT 100ml Vapo","price":63},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 161020","barcode":"8431754010021","description":"HWN Man My World EDP 50ml Vapo","price":49},{"brand":"HALLOWEEN PERFUMES","itemCode":"HN 161040","barcode":"8431754010007","description":"HWN Man My World EDP 125ml Vapo","price":87},{"brand":"ISSEY MIYAKE","itemCode":"IM 31551","barcode":"3423470300154","description":"IM EDT VAPO 50ML","price":109},{"brand":"ISSEY MIYAKE","itemCode":"IM 31651","barcode":"3423470300161","description":"IM EDT VAPO 100ML","price":152},{"brand":"ISSEY MIYAKE","itemCode":"IM 318120","barcode":"3423222010294","description":"IM EDP DROP 50ML","price":119},{"brand":"ISSEY MIYAKE","itemCode":"IM 318123","barcode":"3423222010324","description":"IM EDP DROP 90ML","price":151},{"brand":"ISSEY MIYAKE","itemCode":"IM 318402","barcode":"3423222091019","description":"IM EDP V3 DROP D ISSEY ESSENTIELLE  90ML","price":155},{"brand":"ISSEY MIYAKE","itemCode":"IM 318543","barcode":"3423222106300","description":"IM LE SEL D ISSEY 50ML EDT","price":97},{"brand":"ISSEY MIYAKE","itemCode":"IM 318545","barcode":"3423222106324","description":"IM LE SEL D ISSEY 100ML EDT","price":132},{"brand":"ISSEY MIYAKE","itemCode":"IM 318562","barcode":"3423222106492","description":"COF EH EDT 125ML + SG 50ML + AS 50ML 2024","price":124},{"brand":"ISSEY MIYAKE","itemCode":"IM 318649","barcode":"3423222118327","description":"IM EI 50ML EDPI","price":128},{"brand":"ISSEY MIYAKE","itemCode":"IM 318651","barcode":"3423222118341","description":"IM EI 100ML EDPI","price":173},{"brand":"ISSEY MIYAKE","itemCode":"IM 318654","barcode":"3423222118372","description":"IM EH 75ML EDP","price":103},{"brand":"ISSEY MIYAKE","itemCode":"IM 318656","barcode":"3423222118396","description":"IM EH 125ML EDP","price":143},{"brand":"ISSEY MIYAKE","itemCode":"IM 33355","barcode":"3423470311358","description":"IM HOMME EDT VAPO 75ML","price":97},{"brand":"ISSEY MIYAKE","itemCode":"IM 33365","barcode":"3423470311365","description":"IM HOMME EDT VAPO 125ML","price":131},{"brand":"ISSEY MIYAKE","itemCode":"IM 48109","barcode":"3423470481099","description":"EI 200ML SHOWER CREAM D","price":48},{"brand":"ISSEY MIYAKE","itemCode":"IM 48113","barcode":"3423470481136","description":"EI 100ML DEO SPRAY D","price":48},{"brand":"ISSEY MIYAKE","itemCode":"IM 48460","barcode":"3423474846054","description":"EI PURE 18 EDP NECTAR 50ML D","price":115},{"brand":"ISSEY MIYAKE","itemCode":"IM 48461","barcode":"3423474846153","description":"EI PURE 18 EDP NECTAR 90ML D","price":147},{"brand":"ISSEY MIYAKE","itemCode":"IM 48746","barcode":"3423474874651","description":"NUIT D ISSEY EDT 75ML 2014","price":97},{"brand":"ISSEY MIYAKE","itemCode":"IM 48839","barcode":"3423474883950","description":"NT 125ML EDP 2015","price":144},{"brand":"ISSEY MIYAKE","itemCode":"IM 48841","barcode":"3423474884155","description":"NT 75ML EDP 2015","price":103},{"brand":"ISSEY MIYAKE","itemCode":"IM 84095","barcode":"3423478409552","description":"IM EAU SUPER MAJEUR EDT INT 100ML 2018 D","price":113},{"brand":"ISSEY MIYAKE","itemCode":"IM 85093","barcode":"3423478509351","description":"EH EDPI 100ML WOOD & WOOD","price":146},{"brand":"ISSEY MIYAKE","itemCode":"IM 85097","barcode":"3423478509757","description":"EH EDPI 50ML WOOD & WOOD","price":97},{"brand":"ISSEY MIYAKE","itemCode":"IM 85158","barcode":"3423478515857","description":"EI EDPI 50ML ROSE & ROSE","price":119},{"brand":"ISSEY MIYAKE","itemCode":"IM 85160","barcode":"3423478516052","description":"EI EDPI 90ML ROSE & ROSE","price":151},{"brand":"ISSEY MIYAKE","itemCode":"IM 87826","barcode":"3423478782655","description":"IM EI EDT PURE NECTAR 90ML D","price":135},{"brand":"ISSEY MIYAKE","itemCode":"IM 89745","barcode":"3423478974555","description":"IM EDT FUSION 50ML","price":82},{"brand":"ISSEY MIYAKE","itemCode":"IM 89746","barcode":"3423478974654","description":"IM EDT FUSION 100ML","price":116},{"brand":"JACOMO PARFUMS","itemCode":"JJ 507517","barcode":"3392865075178","description":"J DE JACOMO 100ML EDT","price":95},{"brand":"JACOMO PARFUMS","itemCode":"JJ 507617","barcode":"3392865076175","description":"J DE JACOMO SPORT 100ML EDT","price":95},{"brand":"JACOMO PARFUMS","itemCode":"JJ 507717","barcode":"3392865077172","description":"J DE JACOMO FOR HER 100ML EDT","price":95},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 30538","barcode":"3423473053859","description":"NR NN EDP AMBREE 50ML","price":134},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 30539","barcode":"3423473053958","description":"NR NN EDP AMBREE 90ML","price":175},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82000","barcode":"3423220004073","description":"NR PATCHOULI MUSC EDPI 100ML","price":248},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82189","barcode":"3423222005672","description":"NR JASMINE MUSC EDP INTENSE 100ML","price":248},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82213","barcode":"3423222012687","description":"NR FH MUSC NOIR 50ML EDP","price":127},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82215","barcode":"3423222012700","description":"NR FH MUSC NOIR 100ML EDP","price":170},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82353","barcode":"3423222055523","description":"NR FH MUSC NOIR ROSE EDP 50ML","price":134},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82355","barcode":"3423222055547","description":"NR FH MUSC NOIR ROSE EDP 100ML","price":180},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82362","barcode":"3423222055615","description":"NR NN CRISTAL 50ML EDP","price":134},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82364","barcode":"3423222055639","description":"NR NN CRISTAL 90ML EDP","price":175},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82407","barcode":"3423222056063","description":"NR NH BN PARFUM 50ML","price":120},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82408","barcode":"3423222056070","description":"NR NH BN PARFUM 100ML","price":168},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82518","barcode":"3423222080969","description":"NR ALL OF ME 90ML EDP","price":175},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82519","barcode":"3423222080952","description":"NR ALL OF ME 50ML EDP","price":134},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82734","barcode":"3423222107611","description":"NR FH 50ML EDP  NUDE MUSC","price":134},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82736","barcode":"3423222107635","description":"NR FH 100ML EDP  NUDE MUSC","price":180},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82745","barcode":"3423222107727","description":"NR NH 50ML EDT  VETIVER MUSC","price":97},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82747","barcode":"3423222107741","description":"NR NH 100ML EDT  VETIVER MUSC","price":133},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82751","barcode":"3423222107789","description":"NR MC WILD TUBEROSE EDPI 100ML","price":248},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82752","barcode":"3423222107796","description":"NR MC ROSE EPICEE EDPI 100ML","price":248},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82753","barcode":"3423222107802","description":"NR MC RADIANT MAGNOLIA EDPI 100ML","price":248},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82781","barcode":"3423222108267","description":"NR AOM INTENSE 50ML EDPI","price":141},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82783","barcode":"3423222108281","description":"NR AOM INTENSE 90ML EDPI","price":184},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82827","barcode":"3423222110789","description":"COF NR FH MN 50ML EDP+BL50ML+SG50ML XMAS 2024","price":127},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82914","barcode":"3423222121273","description":"NR FOR HER EDPI 50ML","price":141},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82916","barcode":"3423222121297","description":"NR FOR HER EDPI 100ML","price":190},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82924","barcode":"3423222121570","description":"NR MC SAFRAN MUSC GOLD EDPI 100ML","price":248},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82963","barcode":"3423222121969","description":"NR NN RADIANTE 50ML EDP","price":130},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 82964","barcode":"3423222121976","description":"NR NN RADIANTE 90ML EDP","price":170},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 84628","barcode":"3423478462854","description":"NR ORIENT EDPI 100ML","price":248},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 85041","barcode":"3423478504158","description":"NR FH PURE MUSC 50ML EDP 19","price":134},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 85159","barcode":"3423478515956","description":"NR FH PURE MUSC 100ML EDP 19","price":180},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 88059","barcode":"3423478805958","description":"FOR HIM 15 BLEU NOIR EDT 50ML","price":99},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 88060","barcode":"3423478806054","description":"FOR HIM 15 BLEU NOIR EDT 100ML","price":133},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 88075","barcode":"3423478807556","description":"NH 18 BN EDP 50ML","price":110},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 88076","barcode":"3423478807655","description":"NH 18 BN EDP 100ML","price":149},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 88121","barcode":"3423478812154","description":"FOR HER EDPI ROSE MUSC 100ML","price":248},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 88191","barcode":"3423478819153","description":"FH 17 SANTAL MUSC EDPI 100ML","price":248},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 88372","barcode":"3423478837256","description":"NARCISO 15 SHOWER GEL 200ML D","price":49},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 88373","barcode":"3423478837355","description":"NARCISO 15 HAIR MIST 30ML","price":62},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 88404","barcode":"3423478840454","description":"NARCISO 2016 NN3 EDP POUDREE 50ML","price":134},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 88406","barcode":"3423478840652","description":"NARCISO 2016 NN3 EDP POUDREE 90ML","price":175},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 89001","barcode":"3423470890013","description":"N1 HER EDT VAPO 50ML","price":116},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 89002","barcode":"3423470890020","description":"N1 HER EDT VAPO 100ML","price":161},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 89012","barcode":"3423470890129","description":"N1 HER EDP 100ML","price":180},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 89013","barcode":"3423470890136","description":"N1 HER EDP 50ML","price":134},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 89022","barcode":"3423470890228","description":"N1 HER HAIR MIST 30ML","price":62},{"brand":"NARCISO RODRIGUEZ","itemCode":"NR 89200","barcode":"3423478920057","description":"FH 13 AMBERMUSC EDP ABS 100ML","price":248},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370302","barcode":"8434853000382","description":"SC THE CLUB 75ML EDP VAPO","price":59},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370304","barcode":"8434853000375","description":"SC THE CLUB 125ML EDP VAPO","price":83},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370314","barcode":"8434853003123","description":"COF. SC THE CLUB 125ML EDP + VANITY CASE XMAS24","price":79},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370404","barcode":"8434853001204","description":"SC Kids Girl 100ML EDT VAPO","price":49},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370504","barcode":"8434853001228","description":"SC Kids Boy 100ML EDT VAPO","price":49},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370603","barcode":"8434853001891","description":"SC Her & Here 50ML EDP VAPO","price":55},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370604","barcode":"8434853001884","description":"SC Her & Here 100ML EDP VAPO","price":77},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370614","barcode":"8434853003185","description":"COF. SC Her & Here 100ML EDP + SHOULDER BAG XMAS24","price":74},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370702","barcode":"8434853001501","description":"SC Boxing Club 75ML EDP VAPO","price":59},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370704","barcode":"8434853001495","description":"SC Boxing Club 125ML EDP VAPO","price":83},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370714","barcode":"8434853003147","description":"COF. SC BOXING CLUB 125ML EDP + WALLET  XMAS24","price":79},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370802","barcode":"8434853002898","description":"SC Yacht Club 75ML EDP VAPO","price":59},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370804","barcode":"8434853002881","description":"SC Yacht Club 125ML EDP VAPO","price":83},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370903","barcode":"8434853003963","description":"SC Wild 50ML EDP VAPO","price":55},{"brand":"SCALPERS PARFUMS","itemCode":"SC 370904","barcode":"8434853003956","description":"SC Wild 100ML EDP VAPO","price":77},{"brand":"SCALPERS PARFUMS","itemCode":"SC 371003","barcode":"8434853005196","description":"SC THE BAND FOR HER 50ML EDP VAPO","price":57},{"brand":"SCALPERS PARFUMS","itemCode":"SC 371004","barcode":"8434853005189","description":"SC THE BAND FOR HER 100ML EDP VAPO","price":79},{"brand":"SCALPERS PARFUMS","itemCode":"SC 371103","barcode":"8434853005356","description":"SC THE BAND FOR HIM 50ML EDP VAPO","price":55},{"brand":"SCALPERS PARFUMS","itemCode":"SC 371104","barcode":"8434853005219","description":"SC THE BAND FOR HIM 100ML EDP VAPO","price":76},{"brand":"SCALPERS PARFUMS","itemCode":"SC 371202","barcode":"8434853004779","description":"SC THE SUITE CLUB 75ML EDT VAPO","price":57},{"brand":"SCALPERS PARFUMS","itemCode":"SC 371204","barcode":"8434853004762","description":"SC THE SUITE CLUB 125ML EDT VAPO","price":79},{"brand":"TOUS PARFUMS","itemCode":"TS 428040","barcode":"8436550503081","description":"1920 The Origin Man 100ML EDP  Vapo","price":77},{"brand":"TOUS PARFUMS","itemCode":"TS 429030","barcode":"8436550505078","description":"Tous Your Moments 50ML EDT  Vapo","price":57},{"brand":"TOUS PARFUMS","itemCode":"TS 429040","barcode":"8436550505061","description":"Tous Your Moments 90ML EDT  Vapo","price":74},{"brand":"TOUS PARFUMS","itemCode":"TS 431040","barcode":"8436550508734","description":"BABY Tous Pink Friends 100ML EDC vapo","price":56},{"brand":"TOUS PARFUMS","itemCode":"TS 434030","barcode":"8436550505887","description":"Tous Touch The Luminous Gold 50ML EDT Vapo D","price":65},{"brand":"TOUS PARFUMS","itemCode":"TS 434040","barcode":"8436550505870","description":"Tous Touch The Luminous Gold 100ML EDT Vapo","price":86},{"brand":"TOUS PARFUMS","itemCode":"TS 436030","barcode":"8436550507591","description":"TS LoveMe EDP 50ML Vapo","price":78},{"brand":"TOUS PARFUMS","itemCode":"TS 436040","barcode":"8436550507584","description":"TS LoveMe EDP 90ML Vapo","price":106},{"brand":"TOUS PARFUMS","itemCode":"TS 436140","barcode":"8436603332668","description":"COF TS LoveMe  EDP 90ML + EDP 30ML XMAS 24","price":102},{"brand":"TOUS PARFUMS","itemCode":"TS 436149","barcode":"8436603334549","description":"Cof TS LoveMe  EDP 90ML  + Vanity Case 25","price":106},{"brand":"TOUS PARFUMS","itemCode":"TS 440030","barcode":"8436550508925","description":"TS LoveMe The Onyx Parfum 50ML Vapo","price":86},{"brand":"TOUS PARFUMS","itemCode":"TS 440040","barcode":"8436550508918","description":"TS LoveMe The Onyx Parfum 90ML Vapo","price":117},{"brand":"TOUS PARFUMS","itemCode":"TS 440140","barcode":"8436603332699","description":"COF TS LoveMe Onyx Parfum 90ML + Parf 30ML XMAS 24","price":112},{"brand":"TOUS PARFUMS","itemCode":"TS 440145","barcode":"8436603334587","description":"COF TS LoveMe Onyx Parfum 90ML + Vanity Case  25","price":116},{"brand":"TOUS PARFUMS","itemCode":"TS 441030","barcode":"8436550509557","description":"Tous Your Powers 50ML EDT  Vapo D","price":57},{"brand":"TOUS PARFUMS","itemCode":"TS 441040","barcode":"8436550509540","description":"Tous Your Powers 90ML EDT  Vapo","price":74},{"brand":"TOUS PARFUMS","itemCode":"TS 443030","barcode":"8436550509854","description":"TS LoveMe The Silver Parfum 50ML Vapo","price":86},{"brand":"TOUS PARFUMS","itemCode":"TS 443040","barcode":"8436550509847","description":"TS LoveMe The Silver Parfum 90ML Vapo","price":117},{"brand":"TOUS PARFUMS","itemCode":"TS 443140","barcode":"8436603332729","description":"COF TS LoveMe  Silver Parfum 90ML + 30ML XMAS 24","price":112},{"brand":"TOUS PARFUMS","itemCode":"TS 444040","barcode":"8436603331067","description":"Tous Kids Bear 100ML EDT Vapo","price":59},{"brand":"TOUS PARFUMS","itemCode":"TS 444141","barcode":"8436603334518","description":"Cof Tous Kids Bear 100ML EDT + Vanity Case 2025","price":66},{"brand":"TOUS PARFUMS","itemCode":"TS 445030","barcode":"8436603331296","description":"Tous More More Pink 50ML EDT  Vapo D","price":55},{"brand":"TOUS PARFUMS","itemCode":"TS 445040","barcode":"8436603331289","description":"Tous More More Pink 90ML EDT  Vapo D","price":69},{"brand":"TOUS PARFUMS","itemCode":"TS 446030","barcode":"8436603332101","description":"KAOS 50ML EDP Vapo","price":71},{"brand":"TOUS PARFUMS","itemCode":"TS 446040","barcode":"8436603332095","description":"KAOS 100ML EDP Vapo","price":95},{"brand":"TOUS PARFUMS","itemCode":"TS 447030","barcode":"8436603331654","description":"TS LoveMe The Emerald Elixir Parfum 50ML Vapo","price":89},{"brand":"TOUS PARFUMS","itemCode":"TS 447040","barcode":"8436603331647","description":"TS LoveMe The Emerald Elixir Parfum 90ML Vapo","price":122},{"brand":"TOUS PARFUMS","itemCode":"TS 447140","barcode":"8436603332750","description":"COF TS LoveMe The Em. El. Parf 90ML + 30ML XMAS 24","price":117},{"brand":"TOUS PARFUMS","itemCode":"TS 447146","barcode":"8436603334662","description":"Cof TS LoveMe Eme. El Parf 90ML  + Vanity Case 25","price":122},{"brand":"TOUS PARFUMS","itemCode":"TS 448030","barcode":"8436603333351","description":"TS Electro Touch 50ML EDP Vapo","price":74},{"brand":"TOUS PARFUMS","itemCode":"TS 448040","barcode":"8436603333344","description":"TS Electro Touch 100ML EDP Vapo","price":99},{"brand":"TOUS PARFUMS","itemCode":"TS 449020","barcode":"8436603331999","description":"Tous Man Spritz 50ML EDT  Vapo","price":52},{"brand":"TOUS PARFUMS","itemCode":"TS 449040","barcode":"8436603331982","description":"Tous Man Spritz 100ML EDT  Vapo","price":70},{"brand":"TOUS PARFUMS","itemCode":"TS 451030","barcode":"8436603335423","description":"Tous Sorbet Garden  50ML EDT  Vapo","price":55},{"brand":"TOUS PARFUMS","itemCode":"TS 451040","barcode":"8436603335416","description":"Tous Sorbet Garden  90ML EDT  Vapo","price":69},{"brand":"TOUS PARFUMS","itemCode":"TS 4711051","barcode":"8437002997021","description":"Tous 50ML EDT Vapo","price":60},{"brand":"TOUS PARFUMS","itemCode":"TS 4711061","barcode":"8437002997014","description":"Tous 90ML EDT Vapo","price":75},{"brand":"TOUS PARFUMS","itemCode":"TS 4711062","barcode":"8437002110628","description":"Tous 90ML EDP  Vapo","price":80},{"brand":"TOUS PARFUMS","itemCode":"TS 4711063","barcode":"8437002997571","description":"Tous 50ML EDP  Vapo","price":63},{"brand":"TOUS PARFUMS","itemCode":"TS 4721051","barcode":"8437002997410","description":"Tous Man  50ML EDT  Vapo D","price":52},{"brand":"TOUS PARFUMS","itemCode":"TS 4721071","barcode":"8437002997427","description":"Tous Man  100ML EDT  Vapo","price":70},{"brand":"TOUS PARFUMS","itemCode":"TS 4725053","barcode":"8436603332552","description":"COF TS MAN EDT 100ML + EDT 50ML XMAS 24","price":67},{"brand":"TOUS PARFUMS","itemCode":"TS 4741061","barcode":"8436038831125","description":"BABY Tous  100ML EDC vapo","price":56},{"brand":"TOUS PARFUMS","itemCode":"TS 4741062","barcode":"8436038833617","description":"BABY Tous  100ML EDC  ALCOHOL FREE vapo","price":56},{"brand":"TOUS PARFUMS","itemCode":"TS 4745038","barcode":"8436603332590","description":"SET BBT MY 1ST STC  EDC 100ML +BL 250ML + M. S.C.","price":54},{"brand":"TOUS PARFUMS","itemCode":"TS 4745040","barcode":"8436603334471","description":"Cof BBT MY 1st VICHY 100ML EDC+ BL+Vanity Case 25","price":73},{"brand":"TOUS PARFUMS","itemCode":"TS 4745041","barcode":"8436603334488","description":"Cof BBT MY BATHROOM 100ML EDC+ WHIPES HOLDER 25","price":63},{"brand":"TOUS PARFUMS","itemCode":"TS 4781051","barcode":"8436038834423","description":"Tous Man Sport  50ML EDT  Vapo","price":52},{"brand":"TOUS PARFUMS","itemCode":"TS 4781071","barcode":"8436038834416","description":"Tous Man Sport  100ML EDT  Vapo","price":70},{"brand":"TOUS PARFUMS","itemCode":"TS 4821062","barcode":"8436603331012","description":"Tous Kids Boy 100ML EDT Vapo","price":59},{"brand":"TOUS PARFUMS","itemCode":"TS 4825014","barcode":"8436603334501","description":"Cof Tous Kids Boy 100ML EDT + Vanity Case 2025","price":66},{"brand":"TOUS PARFUMS","itemCode":"TS 4831062","barcode":"8436603331005","description":"Tous Kids Girl 100ML EDT Vapo","price":59},{"brand":"TOUS PARFUMS","itemCode":"TS 4835014","barcode":"8436603334495","description":"Cof Tous Kids Girl 100ML EDT + Vanity Case 2025","price":66},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 30607","barcode":"3423473060758","description":"ZV THIS IS LOVE POUR LUI EDT 50ML D","price":75},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 30608","barcode":"3423473060857","description":"ZV THIS IS LOVE POUR LUI EDT 100ML D","price":102},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319144","barcode":"3423222048297","description":"ZV 50ML EDP VIBES OF FREEDOM TI HER","price":104},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319146","barcode":"3423222048310","description":"ZV 100ML EDP VIBES OF FREEDOM TI HER","price":140},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319150","barcode":"3423222048358","description":"ZV 100ML EDT VIBES OF FREEDOM TI HIM","price":122},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319160","barcode":"3423222048457","description":"ZV 50ML EDT VIBES OF FREEDOM TI HIM","price":91},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319216","barcode":"3423222086626","description":"ZV 23 TI HER UNDRESSED 50ML EDP","price":104},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319218","barcode":"3423222086640","description":"ZV 23 TI HER UNDRESSED 100ML EDP","price":140},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319220","barcode":"3423222086664","description":"ZV 23 TI HIM UNDRESSED 50ML EDT","price":91},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319222","barcode":"3423222086688","description":"ZV 23 TI HIM UNDRESSED 100ML EDT","price":122},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319266","barcode":"3423222106140","description":"ZV 50ML EDPI This is Really Her","price":110},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319268","barcode":"3423222106164","description":"ZV 100ML EDPI This is Really Her","price":150},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319270","barcode":"3423222106188","description":"ZV 50ML EDTI This is Really Him","price":96},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319272","barcode":"3423222106706","description":"ZV 100ML EDTI This is Really Him","price":130},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319316","barcode":"3423222118983","description":"ZV 25 ZADIG 50ML EDP","price":123},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 319318","barcode":"3423222119102","description":"ZV 25 ZADIG 90ML EDP","price":153},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48917","barcode":"3423474891757","description":"ZV 16 THIS IS HER EDP 50ML","price":104},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48918","barcode":"3423474891856","description":"ZV 16 THIS IS HER EDP 100ML","price":140},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48921","barcode":"3423474892150","description":"ZV 16 THIS IS HER GEL DOUCHE 200ML D","price":41},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48922","barcode":"3423474892259","description":"ZV 16 THIS IS HER DEO VAPO 100ML D","price":41},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48923","barcode":"3423474892358","description":"ZV 16 THIS IS HER SCENTED CANDLE 140GR D","price":58},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48935","barcode":"3423474893553","description":"ZV 2017 TOME 1 LA PURETE EDT 50ML","price":94.55},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48951","barcode":"3423474895151","description":"ZV 2017 TOME 3 L ETRE EDT 50ML","price":94.55},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48961","barcode":"3423474896158","description":"ZV 16 THIS IS HIM EDT 50ML","price":91},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48962","barcode":"3423474896257","description":"ZV 16 THIS IS HIM EDT 100ML","price":122},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48964","barcode":"3423474896455","description":"ZV 16 THIS IS HIM SHOWER GEL 200ML  D","price":39},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48965","barcode":"3423474896554","description":"ZV 16 THIS IS HIM DEO STICK 75GR D","price":35},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 48978","barcode":"3423474897858","description":"ZV 2017 TOME 2 LA LEGERETE EDT 50ML","price":94.55},{"brand":"ZADIG & VOLTAIRE","itemCode":"ZV 83056","barcode":"3423478305656","description":"GCDA BL 200ML D","price":45}];
+
+const brands = [...new Set(DATA.map(d => d.brand))];
+const input = document.getElementById('searchInput');
+const sugBox = document.getElementById('suggestions');
+const resultsDiv = document.getElementById('results');
+const clearBtn = document.getElementById('clearBtn');
+const resultsInfo = document.getElementById('resultsInfo');
+const brandScroll = document.getElementById('brandScroll');
+
+let activeBrand = null;
+let sugIndex = -1;
+
+// Build brand pills
+const allPill = document.createElement('div');
+allPill.className = 'pill active';
+allPill.textContent = 'All';
+allPill.onclick = () => { activeBrand = null; updatePills(); doSearch(); };
+brandScroll.appendChild(allPill);
+
+brands.forEach(b => {
+  const pill = document.createElement('div');
+  pill.className = 'pill';
+  pill.textContent = b;
+  pill.onclick = () => {
+    activeBrand = (activeBrand === b) ? null : b;
+    updatePills();
+    doSearch();
+  };
+  brandScroll.appendChild(pill);
+});
+
+function updatePills() {
+  document.querySelectorAll('.pill').forEach(p => {
+    if (!activeBrand && p.textContent === 'All') p.classList.add('active');
+    else if (p.textContent === activeBrand) p.classList.add('active');
+    else p.classList.remove('active');
+  });
+}
+
+function highlight(text, query) {
+  if (!query) return text;
+  const esc = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`(${esc})`, 'gi'), '<mark>$1</mark>');
+}
+
+function getFiltered(query) {
+  let pool = activeBrand ? DATA.filter(d => d.brand === activeBrand) : DATA;
+  if (!query) return pool;
+  const q = query.toLowerCase();
+  return pool.filter(d =>
+    d.itemCode.toLowerCase().includes(q) ||
+    d.barcode.toLowerCase().includes(q) ||
+    d.description.toLowerCase().includes(q)
+  );
+}
+
+function showSuggestions(query) {
+  sugIndex = -1;
+  if (!query || query.length < 1) { sugBox.classList.remove('open'); return; }
+  const matches = getFiltered(query).slice(0, 8);
+  if (!matches.length) { sugBox.classList.remove('open'); return; }
+
+  sugBox.innerHTML = matches.map((m, i) => `
+    <div class="suggestion-item" data-idx="${i}">
+      <div class="sug-left">
+        <span class="sug-code">${highlight(m.itemCode, query)}</span>
+        <span class="sug-desc">${highlight(m.description, query)}</span>
+      </div>
+      <span class="sug-brand">${m.brand}</span>
+    </div>
+  `).join('');
+  sugBox.classList.add('open');
+
+  sugBox.querySelectorAll('.suggestion-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx);
+      const item = matches[idx];
+      input.value = item.itemCode;
+      sugBox.classList.remove('open');
+      showResults([item], item.itemCode);
+    });
+  });
+}
+
+function showResults(items, query) {
+  clearBtn.classList.toggle('visible', !!input.value);
+  if (!items.length && query) {
+    resultsInfo.textContent = '';
+    resultsDiv.innerHTML = `
+      <div class="empty-state">
+        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="20" cy="20" r="14"/><line x1="30" y1="30" x2="42" y2="42"/></svg>
+        <p>No products found for "${query}"</p>
+        <p class="hint">Try a different item code, barcode, or keyword</p>
+      </div>`;
+    return;
+  }
+  if (!query && !activeBrand) {
+    resultsInfo.textContent = `Showing all ${items.length} products`;
+  } else if (!query && activeBrand) {
+    resultsInfo.textContent = `${items.length} products in ${activeBrand}`;
+  } else {
+    resultsInfo.textContent = `${items.length} result${items.length !== 1 ? 's' : ''} found`;
+  }
+
+  resultsDiv.innerHTML = items.map((m, i) => `
+    <div class="result-card" style="animation-delay:${Math.min(i * 0.04, 0.4)}s">
+      <div class="card-top">
+        <span class="card-brand">${m.brand}</span>
+        <span class="card-price">$${typeof m.price === 'number' ? m.price.toFixed(2) : m.price}</span>
+      </div>
+      <div class="card-desc">${highlight(m.description, query)}</div>
+      <div class="card-meta">
+        <div class="meta-item">
+          <span class="meta-label">Item Code</span>
+          <span class="meta-value">${highlight(m.itemCode, query)}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Barcode</span>
+          <span class="meta-value">${highlight(m.barcode, query)}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Price (USD HT)</span>
+          <span class="meta-value">$${typeof m.price === 'number' ? m.price.toFixed(2) : m.price}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function doSearch() {
+  const q = input.value.trim();
+  const items = getFiltered(q);
+  showResults(items, q);
+  showSuggestions(q);
+}
+
+input.addEventListener('input', doSearch);
+
+input.addEventListener('keydown', e => {
+  const items = sugBox.querySelectorAll('.suggestion-item');
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    sugIndex = Math.min(sugIndex + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('active', i === sugIndex));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    sugIndex = Math.max(sugIndex - 1, 0);
+    items.forEach((el, i) => el.classList.toggle('active', i === sugIndex));
+  } else if (e.key === 'Enter' && sugIndex >= 0) {
+    e.preventDefault();
+    items[sugIndex].click();
+  }
+});
+
+clearBtn.addEventListener('click', () => {
+  input.value = '';
+  clearBtn.classList.remove('visible');
+  sugBox.classList.remove('open');
+  doSearch();
+  input.focus();
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrapper')) sugBox.classList.remove('open');
+});
+
+// Initial render
+doSearch();
+</script>
+</body>
+</html>
